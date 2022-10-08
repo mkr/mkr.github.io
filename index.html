@@ -1,0 +1,88 @@
+<html>
+<head>
+    <style>
+        li {
+           text-indent: 0;
+           list-style-type: none;
+        }
+
+        .result-doc {
+            width: 12em;
+            border: 1px dotted #333;
+            padding: 4px 2px;
+        }
+    </style>
+    <script>
+        Array.prototype.random = function () {
+            return this[Math.floor((Math.random()*this.length))];
+        }
+
+        // read search param
+        let searchParams = new URLSearchParams(window.location.search);
+        const qParam = searchParams.has("q") === true ? searchParams.get("q") : "";
+
+        // create some random "documents", i.e string arrays
+        const nouns = ["time", "person", "year", "way", "day", "thing", "man", "world"];
+        const verbs = ["be", "have", "do", "say", "get", "make", "go", "know", "take"];
+        const adjectives = ["good", "new", "first", "last", "long", "great", "little"];
+        const prepositions = ["to", "of", "in", "for", "on", "with"];
+        const others = ["the", "that", "it", "not", "as", "you", "this"];
+
+        const docs = Array.from({length: 100}, () => [nouns, verbs, adjectives, prepositions, others].map(n => n.random()));
+
+        const matchingDocs = docs.filter(doc => doc.includes(qParam));
+        const numDocs = matchingDocs.length;
+
+        function createListWithTemplate() {
+          const ul = document.createElement('ul');
+          ul.classList.add('list', 'result-list');
+          const template = document.getElementById('result-doc-template')   ;
+          matchingDocs.forEach(doc => {
+            const resultDoc = document.importNode(template.content, true);
+            resultDoc.querySelector('.doc-name').textContent = resultDoc[0];
+            resultDoc.querySelector('.doc-content').textContent = doc.join(" ");
+            ul.appendChild(resultDoc);
+          });
+          const resultListPlaceholder = document.querySelector('.result-doc-list');
+          resultListPlaceholder.replaceWith(ul);
+        }
+
+        window.addEventListener('DOMContentLoaded', function(event){
+            document.getElementById("site-search").value = qParam;
+            document.getElementById("site-search-resultcount").textContent = numDocs;
+            document.getElementById("site-search-term").textContent = qParam;
+            createListWithTemplate();
+        });
+    </script>
+</head>
+
+
+<body>
+
+    <div id="search-form">
+        <form method="get">
+            <label for="site-search">Search:</label>
+            <input type="search" id="site-search" name="q">
+            <input type="submit" value="submit" />
+        </form>
+    </div>
+
+    <div id="search-results">
+        <span id="site-search-resultcount">&nbsp;</span>
+        Results for <span id="site-search-term">&nbsp;</span>
+
+        <div id="result-docs">
+            <ul class="result-doc-list"></ul>
+        </div>
+    </div>
+
+    <template id="result-doc-template">
+        <li class="result-doc">
+            <div class="docname"></div>
+            <div class="doccontent"></div>
+        </li>
+    </template>
+
+</body>
+
+</html>
