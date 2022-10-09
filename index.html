@@ -1,59 +1,117 @@
 <html>
 <head>
     <style>
+        ol {
+            margin: 0;
+            padding: 0;
+            list-style-position: inside;
+        }
+
         li {
            text-indent: 0;
-           list-style-type: none;
+        }
+
+        h4 {
+            padding: 0;
+            margin: 0.25em;
+            text-align: center;
         }
 
         .result-doc {
-            width: 12em;
-            border: 1px dotted #333;
-            padding: 4px 2px;
-        }
-    </style>
-    <script>
-        Array.prototype.random = function () {
-            return this[Math.floor((Math.random()*this.length))];
+            padding: 2px 4px;
         }
 
+
+
+        #content {
+            width: 32em;
+            margin-left: auto;
+            margin-right: auto;
+        }
+    </style>
+
+    <script>
         // read search param
         let searchParams = new URLSearchParams(window.location.search);
         const qParam = searchParams.has("q") === true ? searchParams.get("q") : "";
+        const docParam = searchParams.has("doc") === true ? searchParams.get("doc") : "";
 
-        // create some random "documents", i.e string arrays
-        const nouns = ["time", "person", "year", "way", "day", "thing", "man", "world"];
-        const verbs = ["be", "have", "do", "say", "get", "make", "go", "know", "take"];
-        const adjectives = ["good", "new", "first", "last", "long", "great", "little"];
-        const prepositions = ["to", "of", "in", "for", "on", "with"];
+        // as Math.random cannot be initialized with a seed: a "randomish" generator from https://stackoverflow.com/a/19303725
+        var seed = 31337;
+        function sindom() {
+            var x = Math.sin(seed++) * 10000;
+            return x - Math.floor(x);
+        }
+
+        Array.prototype.random = function () {
+            return this[Math.floor((sindom() * this.length))];
+        }
+
+        // some terms to use when creating our random "documents"
+        const nouns = ["time", "person", "year", "way", "day", "thing", "man", "world", "life", "hand", "eye", "place", "world", "woman"];
+        const verbs = ["be", "have", "do", "say", "get", "make", "go", "know", "take", "go", "see", "come", "think", "tell", "give"];
+        const adjectives = ["good", "new", "first", "last", "long", "great", "little", "young", "old", "high", "small", "large"];
+        const prepositions = ["to", "of", "in", "for", "on", "with", "at", "by", "up"];
         const others = ["the", "that", "it", "not", "as", "you", "this"];
 
-        const docs = Array.from({length: 100}, () => [nouns, verbs, adjectives, prepositions, others].map(n => n.random()));
+        function createRandomDocument(id) {
+            const pattern = [nouns, verbs, adjectives, prepositions, others];
+            const body = Array(7).fill(pattern).flat().map(wordTypeTerms => wordTypeTerms.random());
+            const title = body.slice(0, 5);
+            return {
+                id: id,
+                title: title,
+                body: body
+            }
+        }
 
-        const matchingDocs = docs.filter(doc => doc.includes(qParam));
-        const numDocs = matchingDocs.length;
+        const docs = Array.from({length: 100}, (_, i) => createRandomDocument(i));
 
-        function createListWithTemplate() {
-          const ul = document.createElement('ul');
-          ul.classList.add('list', 'result-list');
-          const template = document.getElementById('result-doc-template')   ;
-          matchingDocs.forEach(doc => {
-            const resultDoc = document.importNode(template.content, true);
-            resultDoc.querySelector('.doc-name').textContent = resultDoc[0];
-            resultDoc.querySelector('.doc-content').textContent = doc.join(" ");
-            ul.appendChild(resultDoc);
-          });
-          const resultListPlaceholder = document.querySelector('.result-doc-list');
-          resultListPlaceholder.replaceWith(ul);
+        const matchingDocs = docs.filter(doc => doc.body.includes(qParam));
+        const numMatchingDocs = matchingDocs.length;
+
+        function renderResultDocList() {
+            // renders result documents to an ul element and returns that ul ready to be inserted into the DOM
+            const ol = document.createElement('ol');
+            ol.classList.add('list', 'result-list');
+            const template = document.getElementById('result-doc-summary-template');
+            matchingDocs.forEach(doc => {
+                const node = document.importNode(template.content, true);
+                node.querySelector('.result-link').textContent = doc.title.join(" ") + " (ID " + doc.id + ")";
+                node.querySelector('.result-link').href = "/?doc=" + doc.id + "";
+                ol.appendChild(node);
+            });
+            return ol;
+        }
+
+        function renderSearchResults() {
+            const node = document.importNode(document.getElementById('search-results-template').content, true);
+            node.querySelector('#site-search-resultcount').textContent = numMatchingDocs;
+            node.querySelector('#site-search-term').textContent = "'" + qParam + "'";
+            document.querySelector('#content').appendChild(node);
+
+            document.querySelector('.result-doc-list').replaceWith(renderResultDocList());
+        }
+
+        function renderDetails() {
+            const doc = docs[docParam];
+            const node = document.importNode(document.getElementById('result-doc-detail-template').content, true);
+            node.querySelector('.doc-name').textContent = doc.title.join(" ") + " (ID " + doc.id + ")";
+            node.querySelector('.doc-content').textContent = doc.body.join(" ");
+            document.querySelector('#content').appendChild(node);
         }
 
         window.addEventListener('DOMContentLoaded', function(event){
             document.getElementById("site-search").value = qParam;
-            document.getElementById("site-search-resultcount").textContent = numDocs;
-            document.getElementById("site-search-term").textContent = qParam;
-            createListWithTemplate();
+
+            if (qParam != "") {
+                renderSearchResults();
+            } else if (docParam != "") {
+                renderDetails();
+            }
         });
     </script>
+
     <!-- Google Tag Manager -->
     <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-MHPWPBF');</script>
     <!-- End Google Tag Manager -->
@@ -62,28 +120,39 @@
 
 <body>
 
-    <div id="search-form">
-        <form method="get">
-            <label for="site-search">Search:</label>
-            <input type="search" id="site-search" name="q">
-            <input type="submit" value="submit" />
-        </form>
-    </div>
-
-    <div id="search-results">
-        <span id="site-search-resultcount">&nbsp;</span>
-        Results for <span id="site-search-term">&nbsp;</span>
-
-        <div id="result-docs">
-            <ul class="result-doc-list"></ul>
+    <div id="content">
+        <div id="search-form">
+            <form method="get">
+                <label for="site-search">Search:</label>
+                <input type="search" id="site-search" name="q">
+                <input type="submit" value="submit" />
+            </form>
         </div>
+
+        <!-- dynamic templated content rendered here ... -->
+
     </div>
 
-    <template id="result-doc-template">
+    <template id="search-results-template">
+        <div id="search-results">
+            <span id="site-search-resultcount">&nbsp;</span>
+            Results for <span id="site-search-term">&nbsp;</span>. Click on the result to see details.
+
+            <div id="result-docs">
+                <ul class="result-doc-list"></ul>
+            </div>
+        </div>
+    </template>
+
+    <template id="result-doc-summary-template">
         <li class="result-doc">
-            <div class="doc-name"></div>
-            <div class="doc-content"></div>
+            <a href="#" class="result-link">Document Title</a>
         </li>
+    </template>
+
+    <template id="result-doc-detail-template">
+        <h4 class="doc-name"></h4>
+        <div class="doc-content"></div>
     </template>
 
 </body>
