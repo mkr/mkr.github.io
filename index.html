@@ -21,8 +21,6 @@
             padding: 2px 4px;
         }
 
-
-
         #content {
             width: 32em;
             margin-left: auto;
@@ -66,7 +64,6 @@
         }
 
         const docs = Array.from({length: 100}, (_, i) => createRandomDocument(i));
-
         const matchingDocs = docs.filter(doc => doc.body.includes(qParam));
         const numMatchingDocs = matchingDocs.length;
 
@@ -75,13 +72,36 @@
             const ol = document.createElement('ol');
             ol.classList.add('list', 'result-list');
             const template = document.getElementById('result-doc-summary-template');
-            matchingDocs.forEach(doc => {
+            matchingDocs.forEach((doc, idx) => {
                 const node = document.importNode(template.content, true);
-                node.querySelector('.result-link').textContent = doc.title.join(" ") + " (ID " + doc.id + ")";
-                node.querySelector('.result-link').href = "/?doc=" + doc.id + "";
+                const resultLink = node.querySelector('.result-link');
+                resultLink.textContent = doc.title.join(" ") + " (ID " + doc.id + ")";
+                resultLink.href = "/?doc=" + doc.id + "";
+                resultLink.addEventListener('click', () => trackClick(qParam, idx, doc.id));
                 ol.appendChild(node);
             });
             return ol;
+        }
+
+        function trackSearch() {
+            const matchingDocIds = matchingDocs.map(doc => doc.id);
+            window.dataLayer = window.dataLayer || [];
+            window.dataLayer.push({
+                'event' : 'search',
+                'searchTerm' : qParam,
+                'hitsTotal': matchingDocIds.length,
+                'hitsShown': matchingDocIds
+            });
+        }
+
+        function trackClick(searchTerm, position, docId) {
+            window.dataLayer = window.dataLayer || [];
+            window.dataLayer.push({
+                'event' : 'searchResultClick',
+                'searchTerm' : searchTerm,
+                'position': position,
+                'docId': docId
+            });
         }
 
         function renderSearchResults() {
@@ -92,6 +112,7 @@
 
             document.querySelector('.result-doc-list').replaceWith(renderResultDocList());
         }
+
 
         function renderDetails() {
             const doc = docs[docParam];
@@ -104,9 +125,12 @@
         window.addEventListener('DOMContentLoaded', function(event){
             document.getElementById("site-search").value = qParam;
 
-            if (qParam != "") {
+            if (qParam !== "") {
+                // Search Results Page
+                trackSearch();
                 renderSearchResults();
-            } else if (docParam != "") {
+            } else if (docParam !== "") {
+                // Details Page
                 renderDetails();
             }
         });
